@@ -7,7 +7,7 @@ Helper that allows easy testing of AWS Lambda IAM roles that were created in Ser
 npm i -D serverless-iam-test-helper
 ```
 ## 2. Make sure there is a dedicated role per function
-This library works with IAM role naming convention defined by `serverless-iam-roles-per-function` plugin. Make sure you're using it.
+This library works with IAM role naming convention defined by [serverless-iam-roles-per-function](https://github.com/functionalone/serverless-iam-roles-per-function) plugin. Make sure you're using it.
 
 ## 3. Write test in `jest`
 
@@ -64,8 +64,18 @@ You may also test that Lambda's IAM Role will block not allowed operations. Here
 # How does it work?
 The logic behind it is pretty simple. Instead of executing *integration tests* using your *AWS profile* (IAM user), which usually has admin privileges, and is defined in `~/.aws/credentials` file. 
 
-I temporarily *assume* Lambda's IAM Role and execute whole test suite within that role context. Any AWS SDK operation that your code want's to execute is checked by the IAM service. Depending on the Lambda's IAM Role configuration it is *allowed* or *denied*.
+I temporarily *assume* Lambda's IAM Role and execute the whole test suite within that role context. Any AWS SDK operation that your code wants to execute is checked by the IAM service. Depending on  Lambda's IAM Role configuration it is *allowed* or *denied*.
 
-You will get **best results** when using that approach in projects that follow *hexagonal architecture*, so you can easily test in an independent way parts (modules) of you application. Check out this [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) for Serverless Framework and an article describing [why and how to use it](https://dev.to/pzubkiewicz/testing-serverless-apps-has-never-been-easier-442m).
+Test suites run in an isolated fashion, that's why you may have multiple tests when each assumes other Lambda's role. After tests finish your own role (IAM user) is still present. **This does not override any of your local settings nor environment variables**.
+
+You will get the **best results** when using that approach in projects that follow *hexagonal architecture*, so you can easily test in isolation parts (modules) of your application. Check out this [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) for Serverless Framework and an article describing [why and how to use it](https://dev.to/pzubkiewicz/testing-serverless-apps-has-never-been-easier-442m).
 
 # Benefits
+
+# Example
+Working example is included in the [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) project. Follow instruction on its website to deploy your own project.
+
+Sample `jest` tests that illustrate usage of that library
+* [createItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/createItem/createItem-MyEntityService.int.js)
+* [processItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/processItem/processItem-MyEntityService.int.js).
+
