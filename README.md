@@ -1,5 +1,5 @@
 # serverless-iam-test-helper
-Helper that allows easy testing of AWS Lambda IAM roles that were created in Serverless Framework project using `serverless-iam-roles-per-function` plugin and `jest` testing framework.
+Helper that allows easy testing of AWS Lambda IAM roles that were created in Serverless Framework project using `serverless-iam-roles-per-function` plugin. Works with `jest` testing framework.
 
 # How to use?
 ## 1. Install as a dev dependency
@@ -11,7 +11,7 @@ This library works with IAM role naming convention defined by [serverless-iam-ro
 
 ## 3. Write test in `jest`
 
-In your `jest` test suite add a `beforeAll` method where you assume the role Lambda function's IAM Role by providing `LAMBDA_LOGICAL_NAME` as parameter.
+In your `jest` test suite add a `beforeAll` method where you will assume the Lambda function's IAM Role by providing `LAMBDA_LOGICAL_NAME` as parameter.
 ```JavaScript
 const IamTestHelper = require('serverless-iam-test-helper')
 
@@ -44,7 +44,7 @@ You may also test that Lambda's IAM Role will block not allowed operations. Here
 ```JavaScript
   it('should DENY dynamodb:Query', async () => {
     // GIVEN
-    const payload = {}
+    const payload = { ... }
     const service = new MyEntityService()
 
     // WHEN
@@ -60,6 +60,7 @@ You may also test that Lambda's IAM Role will block not allowed operations. Here
     expect(actual.message.includes('is not authorized to perform: dynamodb:Query')).toBeTruthy()
   })
 ```
+In such test `exception` is expected 😉
 
 # How does it work?
 The logic behind it is pretty simple. Instead of executing *integration tests* using your *AWS profile* (IAM user), which usually has admin privileges, and is defined in `~/.aws/credentials` file. 
@@ -71,6 +72,11 @@ Test suites run in an isolated fashion, that's why you may have multiple tests w
 You will get the **best results** when using that approach in projects that follow *hexagonal architecture*, so you can easily test in isolation parts (modules) of your application. Check out this [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) for Serverless Framework and an article describing [why and how to use it](https://dev.to/pzubkiewicz/testing-serverless-apps-has-never-been-easier-442m).
 
 # Benefits
+* Better security due to tailored IAM Roles
+* Tests are executed locally against **real** services in the AWS cloud
+* Works in your CI/CD pipeline
+* Easier & faster development
+* Easier modification of the project: IAM Role tests protect against *regression* bugs in case 
 
 # Example
 Working example is included in the [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) project. Follow instruction on its website to deploy your own project.
