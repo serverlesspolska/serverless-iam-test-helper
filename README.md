@@ -117,10 +117,13 @@ describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
 })
 
 ```
-This allows me to delete items that I have created during tests using my own profile with administrative privileges even when Lambda's IAM Role is not allowed to delete elements from DynamoDB table.
+This allows me to delete items that I have created during tests using my own IAM user profile with administrative privileges even when Lambda's IAM Role is not allowed to delete elements from DynamoDB table.
 
 This helps me to keep my table in order.
 # Benefits
+
+Using this approach has following advantages:
+
 * Better security due to tailored IAM Roles
 * Tests are executed locally against **real** services in the AWS cloud
 * Works in your CI/CD pipeline
