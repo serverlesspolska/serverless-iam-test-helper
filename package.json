@@ -9,6 +9,11 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/serverlesspolska/serverless-iam-test-helper.git"
+  },
+  "homepage": "https://github.com/serverlesspolska/serverless-iam-test-helper#readme",
   "keywords": [
     "AWS",
     "Lambda",

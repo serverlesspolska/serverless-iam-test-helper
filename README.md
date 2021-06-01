@@ -128,7 +128,7 @@ Using this approach has following advantages:
 * Tests are executed locally against **real** services in the AWS cloud
 * Works in your CI/CD pipeline
 * Easier & faster development
-* Easier modification of the project: IAM Role tests protect against *regression* bugs in case 
+* Easier maintenance of the project: IAM Role tests protect against *regression* bugs in case of modification 
 
 # Example
 Working example is included in the [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) project. Follow instruction on its website to deploy your own project.
