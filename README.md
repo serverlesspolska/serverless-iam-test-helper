@@ -71,6 +71,55 @@ Test suites run in an isolated fashion, that's why you may have multiple tests w
 
 You will get the **best results** when using that approach in projects that follow *hexagonal architecture*, so you can easily test in isolation parts (modules) of your application. Check out this [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) for Serverless Framework and an article describing [why and how to use it](https://dev.to/pzubkiewicz/testing-serverless-apps-has-never-been-easier-442m).
 
+### The `assumeUserRoleBack` aka compensation
+The `IamTestHelper` class provides a method named `assumeUserRoleBack()`, which allows assuming your own (local IAM user) role back. 
+
+That proves to be useful when you test a Lambda IAM Role that is allowed **only** to create elements (i.e. in DynamoDB database) but you want to perform a cleanup of sorts after the test, so there aren't any leftovers after test execution.
+
+My patter to achieve that is depicted by code below:
+```JavaScript
+const IamTestHelper = require('serverless-iam-test-helper')
+
+let ITH
+const cleanup = []
+
+describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
+  
+  beforeAll(async () => {
+    ITH = await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
+  });
+ 
+ it('should ALLOW dynamodb:PutItem', async () => {
+    // GIVEN
+    const payload = { ... }
+    const service = new MyEntityService()
+
+    // WHEN
+    const actual = await service.create(payload)
+
+    // THEN
+    expect(actual).toBe(...)
+
+     // CLEANUP
+    cleanup.push(actual)
+  });
+
+ afterAll(async () => {
+    await ITH.assumeUserRoleBack()
+    const userRoleAdapter = new DynamoDbAdapter()
+    const deleteAll = cleanup.map((obj) => userRoleAdapter.delete({
+      Key: obj.key(),
+      TableName: process.env.tableName
+    }))
+    await Promise.all(deleteAll)
+  });
+
+})
+
+```
+This allows me to delete items that I have created during tests using my own profile with administrative privileges even when Lambda's IAM Role is not allowed to delete elements from DynamoDB table.
+
+This helps me to keep my table in order.
 # Benefits
 * Better security due to tailored IAM Roles
 * Tests are executed locally against **real** services in the AWS cloud
@@ -81,7 +130,7 @@ You will get the **best results** when using that approach in projects that foll
 # Example
 Working example is included in the [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) project. Follow instruction on its website to deploy your own project.
 
-Sample `jest` tests that illustrate usage of that library
+Sample `jest` tests that illustrate usage of that library are included in the `serverless-hexagonal-template` project.
 * [createItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/createItem/createItem-MyEntityService.int.js)
 * [processItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/processItem/processItem-MyEntityService.int.js).
 
