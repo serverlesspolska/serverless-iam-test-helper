@@ -52,16 +52,16 @@ You may also test that Lambda's IAM Role will block not allowed operations. Here
     const service = new MyEntityService()
 
     // WHEN
-    let actual
+    let exception
     try {
       await service.getByQuery(payload)
-    } catch (exception) {
-      actual = exception
+    } catch (error) {
+      exception = error
     }
 
     // THEN
-    expect(actual.code).toBe('AccessDeniedException')
-    expect(actual.message.includes('is not authorized to perform: dynamodb:Query')).toBeTruthy()
+    expect(exception.name).toBe('AccessDeniedException') // AWS SDK v3 convention
+    expect(exception.message.includes('is not authorized to perform: dynamodb:Query')).toBeTruthy()
   })
 ```
 In such test `exception` is expected 😉
