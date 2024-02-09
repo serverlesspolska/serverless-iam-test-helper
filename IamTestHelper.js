@@ -9,7 +9,7 @@ import { createLogger } from 'serverless-logger';
 const log = createLogger(import.meta.url);
 const region = 'us-east-1'
 
-export class IamTestHelper {
+export default class IamTestHelper {
   constructor(roleName) {
     this.roleName = roleName;
     this.roleArn = undefined;
@@ -46,6 +46,8 @@ export class IamTestHelper {
     await helper.assumeLambdaRole()
 
     await helper.getCallerIdentityInRole()
+
+    helper.setCredentialsInEnv()
 
     return helper
   }
@@ -179,5 +181,21 @@ export class IamTestHelper {
       secretAccessKey: data.Credentials.SecretAccessKey,
       sessionToken: data.Credentials.SessionToken
     };
+  }
+
+  setCredentialsInEnv() {
+    process.env.AWS_ACCESS_KEY_ID = this.credentials.accessKeyId
+    process.env.AWS_SECRET_ACCESS_KEY = this.credentials.secretAccessKey
+    process.env.AWS_SESSION_TOKEN = this.credentials.sessionToken
+  }
+
+  static leaveLambdaRole() {
+    this.assumeUserRoleBack()
+  }
+
+  static assumeUserRoleBack() {
+    delete process.env.AWS_ACCESS_KEY_ID
+    delete process.env.AWS_SECRET_ACCESS_KEY
+    delete process.env.AWS_SESSION_TOKEN
   }
 }

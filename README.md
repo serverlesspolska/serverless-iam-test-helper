@@ -16,14 +16,11 @@ This library works with IAM role naming convention defined by [serverless-iam-ro
 
 In your `jest` test suite add a `beforeAll` method where you will assume the Lambda function's IAM Role by providing `LAMBDA_LOGICAL_NAME` as parameter.
 ```JavaScript
-import { IamTestHelper } from '../IamTestHelper.js';
+import IamTestHelper from 'serverless-iam-test-helper';
 
 describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
   beforeAll(async () => {
-    const { credentials } = await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
-    process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId
-    process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey
-    process.env.AWS_SESSION_TOKEN = credentials.sessionToken
+    await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
   });
 
  // tests go here
@@ -79,24 +76,21 @@ Test suites run in an isolated fashion, that's why you may have multiple tests w
 You will get the **best results** when using that approach in projects that follow *hexagonal architecture*, so you can easily test in isolation parts (modules) of your application. Check out this [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) for Serverless Framework and an article describing [why and how to use it](https://dev.to/pzubkiewicz/testing-serverless-apps-has-never-been-easier-442m).
 
 ### Test compensation
-The *test compensation* is an approach when test cleans up after itself.
+The *test compensation* is an approach when test cleans up after itself. The `IamTestHelper` class provides a `static` method named `leaveLambdaRole()` and an alias `assumeUserRoleBack()`, which allows assuming your own (local IAM user) role back. 
 
 That proves to be useful when you test a Lambda IAM Role that is allowed **only** to create elements (i.e. in DynamoDB database) but you want to perform a cleanup of sorts after the test, so there aren't any leftovers after test execution.
 
 My pattern to achieve that is depicted by code below:
 ```JavaScript
-const IamTestHelper = require('serverless-iam-test-helper')
+import IamTestHelper from 'serverless-iam-test-helper';
+// rest of imports
 
-let ITH
 const cleanup = []
 
 describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
   
   beforeAll(async () => {
-    const { credentials } = await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
-    process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId
-    process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey
-    process.env.AWS_SESSION_TOKEN = credentials.sessionToken
+    await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
   });
  
  it('should ALLOW dynamodb:PutItem', async () => {
@@ -115,9 +109,7 @@ describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
   });
 
  afterAll(async () => {
-    delete process.env.AWS_ACCESS_KEY_ID
-    delete process.env.AWS_SECRET_ACCESS_KEY
-    delete process.env.AWS_SESSION_TOKEN
+    IamTestHelper.leaveLambdaRole()
 
     const userRoleAdapter = new DynamoDbAdapter()
     const deleteAll = cleanup.map((obj) => userRoleAdapter.delete({
@@ -147,6 +139,6 @@ Using this approach has following advantages:
 Working example is included in the [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) project. Follow instruction on its website to deploy your own project.
 
 Sample `jest` tests that illustrate usage of that library are included in the `serverless-hexagonal-template` project.
-* [createItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/createItem/createItem-MyEntityService.int.js)
-* [processItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/processItem/processItem-MyEntityService.int.js).
+* [createItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/createItem/iam-createItem-MyEntityService.int.js)
+* [processItem-MyEntityService.int.js](https://github.com/serverlesspolska/serverless-hexagonal-template/blob/main/__tests__/processItem/iam-processItem-MyEntityService.int.js).
 
