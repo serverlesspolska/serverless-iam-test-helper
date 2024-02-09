@@ -1,6 +1,9 @@
 # serverless-iam-test-helper
 Helper that allows easy testing of AWS Lambda IAM roles that were created in Serverless Framework project using `serverless-iam-roles-per-function` plugin. Works with `jest` testing framework.
 
+# Compatibility with AWS SDK
+The current version `>= 1.0.0` of this library works with AWS SDK v3. For AWS SDK v2 compatibility use version `0.0.4`.
+
 # How to use?
 ## 1. Install as a dev dependency
 ```
@@ -13,12 +16,16 @@ This library works with IAM role naming convention defined by [serverless-iam-ro
 
 In your `jest` test suite add a `beforeAll` method where you will assume the Lambda function's IAM Role by providing `LAMBDA_LOGICAL_NAME` as parameter.
 ```JavaScript
-const IamTestHelper = require('serverless-iam-test-helper')
+import { IamTestHelper } from '../IamTestHelper.js';
 
 describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
   beforeAll(async () => {
-    await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
+    const { credentials } = await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
+    process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId
+    process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey
+    process.env.AWS_SESSION_TOKEN = credentials.sessionToken
   });
+
  // tests go here
 })
 ```
@@ -71,12 +78,12 @@ Test suites run in an isolated fashion, that's why you may have multiple tests w
 
 You will get the **best results** when using that approach in projects that follow *hexagonal architecture*, so you can easily test in isolation parts (modules) of your application. Check out this [serverless-hexagonal-template](https://github.com/serverlesspolska/serverless-hexagonal-template) for Serverless Framework and an article describing [why and how to use it](https://dev.to/pzubkiewicz/testing-serverless-apps-has-never-been-easier-442m).
 
-### The `assumeUserRoleBack` aka compensation
-The `IamTestHelper` class provides a method named `assumeUserRoleBack()`, which allows assuming your own (local IAM user) role back. 
+### Test compensation
+The *test compensation* is an approach when test cleans up after itself.
 
 That proves to be useful when you test a Lambda IAM Role that is allowed **only** to create elements (i.e. in DynamoDB database) but you want to perform a cleanup of sorts after the test, so there aren't any leftovers after test execution.
 
-My patter to achieve that is depicted by code below:
+My pattern to achieve that is depicted by code below:
 ```JavaScript
 const IamTestHelper = require('serverless-iam-test-helper')
 
@@ -86,7 +93,10 @@ const cleanup = []
 describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
   
   beforeAll(async () => {
-    ITH = await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
+    const { credentials } = await IamTestHelper.assumeRoleByLambdaName('<LAMBDA_LOGICAL_NAME>')
+    process.env.AWS_ACCESS_KEY_ID = credentials.accessKeyId
+    process.env.AWS_SECRET_ACCESS_KEY = credentials.secretAccessKey
+    process.env.AWS_SESSION_TOKEN = credentials.sessionToken
   });
  
  it('should ALLOW dynamodb:PutItem', async () => {
@@ -105,7 +115,10 @@ describe('<LAMBDA_LOGICAL_NAME> Lambda IAM Role', () => {
   });
 
  afterAll(async () => {
-    await ITH.assumeUserRoleBack()
+    delete process.env.AWS_ACCESS_KEY_ID
+    delete process.env.AWS_SECRET_ACCESS_KEY
+    delete process.env.AWS_SESSION_TOKEN
+
     const userRoleAdapter = new DynamoDbAdapter()
     const deleteAll = cleanup.map((obj) => userRoleAdapter.delete({
       Key: obj.key(),

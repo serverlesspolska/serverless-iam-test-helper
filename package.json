@@ -1,8 +1,9 @@
 {
   "name": "serverless-iam-test-helper",
-  "version": "0.0.4",
+  "version": "1.0.0",
   "description": "Helper for testing Lambda IAM Roles created by Serverless Framework.",
   "main": "IamTestHelper.js",
+  "type": "module",
   "files": [
     "IamTestHelper.js"
   ],
@@ -23,12 +24,13 @@
   "author": "Pawel Zubkiewicz",
   "license": "MIT",
   "dependencies": {
-    "aws-sdk": "^2.917.0",
-    "serverless-logger": "^1.1.1"
+    "@aws-sdk/client-iam": "^3.509.0",
+    "@aws-sdk/client-sts": "^3.507.0",
+    "serverless-logger": "^2.0.0"
   },
   "devDependencies": {
-    "eslint": "^7.27.0",
-    "eslint-config-airbnb-base": "^14.2.1",
-    "eslint-plugin-import": "^2.23.3"
+    "eslint": "^8.56.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.29.1"
   }
 }
