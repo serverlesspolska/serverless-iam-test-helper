@@ -1,11 +1,21 @@
-const AWS = require('aws-sdk')
-const log = require('serverless-logger')(__filename)
+import {
+  IAMClient, GetRoleCommand, UpdateAssumeRolePolicyCommand
+} from '@aws-sdk/client-iam';
+import {
+  STSClient, AssumeRoleCommand, GetSessionTokenCommand, GetCallerIdentityCommand
+} from '@aws-sdk/client-sts';
+import { createLogger } from 'serverless-logger';
 
-module.exports = class IamTestHelper {
+const log = createLogger(import.meta.url);
+const region = 'us-east-1'
+
+export class IamTestHelper {
   constructor(roleName) {
-    this.roleName = roleName
-    this.iam = new AWS.IAM()
-    this.sts = new AWS.STS()
+    this.roleName = roleName;
+    this.roleArn = undefined;
+    this.credentials = undefined;
+    this.iam = new IAMClient({ region })
+    this.sts = new STSClient({ region })
   }
 
   static async assumeRoleByFullName(roleName) {
@@ -35,13 +45,15 @@ module.exports = class IamTestHelper {
     await helper.updateRoleTrustPolicy()
     await helper.assumeLambdaRole()
 
-    await helper.getCallerIdentity()
+    await helper.getCallerIdentityInRole()
 
     return helper
   }
 
   async refreshCredentials() {
-    const oldSessionTokenKey = (await this.sts.getSessionToken().promise()).Credentials.sessionToken
+    const command = new GetSessionTokenCommand({});
+    const response = await this.sts.send(command);
+    const oldSessionTokenKey = response.Credentials.sessionToken
 
     const credentials = new AWS.Credentials()
     const get = await credentials.getPromise()
@@ -52,22 +64,44 @@ module.exports = class IamTestHelper {
     log('new === old: ', newSessionTokenKey === oldSessionTokenKey);
   }
 
-  async getCallerIdentity() {
-    const caller = await this.sts.getCallerIdentity({}).promise()
-    this.awsAccountId = caller.Account
-    this.principal = caller.Arn
+  /**
+   *
+   * This is just a checkup up method to verify is role was assumed
+   */
+  async getCallerIdentityInRole() {
+    const stsClientInRole = new STSClient({
+      region,
+      credentials: this.credentials
+    });
+
+    const command = new GetCallerIdentityCommand({});
+    const response = await stsClientInRole.send(command);
+
+    this.awsAccountId = response.Account
+    this.principal = response.Arn
     log(`Caller Identity: your current AWS Account: ${this.awsAccountId}, and Principal: ${this.principal}`)
-    return caller
+    return response
+  }
+
+  async getCallerIdentity() {
+    const command = new GetCallerIdentityCommand({});
+    const response = await this.sts.send(command);
+    this.awsAccountId = response.Account
+    this.principal = response.Arn
+    log(`Caller Identity: your current AWS Account: ${this.awsAccountId}, and Principal: ${this.principal}`)
+    return response
   }
 
   async getCallerCredentials() {
-    const credentials = await this.sts.getSessionToken().promise()
+    const command = new GetSessionTokenCommand({});
+    const credentials = await this.sts.send(command);
     this.masterCredentials = credentials
     log('Caller credentials has been fetched')
   }
 
   async getRoleTrustPolicy() {
-    const role = await this.iam.getRole({ RoleName: this.roleName }).promise()
+    const command = new GetRoleCommand({ RoleName: this.roleName });
+    const role = await this.iam.send(command);
     const trustPolicyJson = decodeURIComponent(role.Role.AssumeRolePolicyDocument)
     const trustPolicy = JSON.parse(trustPolicyJson)
     this.trustPolicy = trustPolicy
@@ -103,11 +137,12 @@ module.exports = class IamTestHelper {
         PolicyDocument: JSON.stringify(this.trustPolicy, null, 2),
         RoleName: this.roleName
       }
-      await this.iam.updateAssumeRolePolicy(params).promise()
+      const command = new UpdateAssumeRolePolicyCommand(params);
+      await this.iam.send(command);
       const sleep = (seconds) => new Promise((resolve) => { setTimeout(resolve, seconds * 1000) })
       log('Waiting 15 seconds so AWS has time to deal with the update');
       await sleep(15) // needed, so AWS figures out trust relationship has been updated
-      await this.refreshCredentials()
+      // await this.refreshCredentials() // it was enabled
     }
   }
 
@@ -121,19 +156,28 @@ module.exports = class IamTestHelper {
   }
 
   async assumeLambdaRole() {
+    const roleArn = `arn:aws:iam::${this.awsAccountId}:role/${this.roleName}`;
+    this.roleArn = roleArn;
     const params = {
-      RoleArn: `arn:aws:iam::${this.awsAccountId}:role/${this.roleName}`,
+      RoleArn: roleArn,
       RoleSessionName: 'testSession'
-    }
-    const data = await this.sts.assumeRole(params).promise()
+    };
+
+    const command = new AssumeRoleCommand(params);
+    const data = await this.sts.send(command);
 
     log(`Assuming AWS Role: ${this.roleName}`);
-    const credentials = this.rewriteCredentials(data)
-    AWS.config.update(credentials);
+    const credentials = this.rewriteCredentials(data);
+    // log(JSON.stringify(credentials, null, 2))
+    this.credentials = credentials
   }
 
-  async assumeUserRoleBack() {
-    log('Assuming user\'s role back')
-    AWS.config.update(this.rewriteCredentials(this.masterCredentials))
+  // eslint-disable-next-line no-dupe-class-members, class-methods-use-this
+  rewriteCredentials(data) {
+    return {
+      accessKeyId: data.Credentials.AccessKeyId,
+      secretAccessKey: data.Credentials.SecretAccessKey,
+      sessionToken: data.Credentials.SessionToken
+    };
   }
 }
