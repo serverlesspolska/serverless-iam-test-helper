@@ -1,6 +1,6 @@
 {
   "name": "serverless-iam-test-helper",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Helper for testing Lambda IAM Roles created by Serverless Framework.",
   "main": "IamTestHelper.js",
   "type": "module",
